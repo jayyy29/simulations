@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organic Compounds Drag & Drop + Quiz</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f8fafc; color: #0f172a; }
+    h1, h2 { margin-bottom: 8px; }
+    .panel { background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+    .score { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .drop-box {
+      min-height: 90px;
+      border: 2px dashed #94a3b8;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      transition: background-color 0.2s;
+    }
+    .drop-box.over { background: #e0f2fe; }
+    .drop-box.correct { border-color: #16a34a; background: #dcfce7; }
+    .box-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 6px; }
+    .draggables { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .card {
+      border: 1px solid #64748b;
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+      cursor: grab;
+      user-select: none;
+      text-align: center;
+      font-weight: 600;
+    }
+    .card.used { opacity: 0.5; cursor: not-allowed; }
+    .answer-grid .drop-box { border-style: solid; background: #ecfeff; min-height: 110px; }
+    .hint { color: #334155; font-size: 0.9rem; }
+    .feedback { min-height: 20px; font-weight: 700; margin-top: 8px; }
+    .quiz-question { margin-bottom: 16px; }
+    .choices label { display: block; margin: 4px 0; }
+    button { padding: 8px 12px; border: none; border-radius: 8px; background: #0ea5e9; color: #fff; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Organic Compound Structural Formula Game</h1>
+
+  <div class="panel">
+    <h2>Picture 1: Empty Boxes (Student Activity)</h2>
+    <div class="score">Score: <span id="score">0</span></div>
+    <p class="hint">Each correct drop gives up to 5 points. A wrong attempt deducts 1 possible point for that box, then try again.</p>
+    <div class="grid" id="dropGrid"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Drag the Structural Formula Cards</h2>
+    <div class="draggables" id="cardBank"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Picture 2: Filled Boxes (Correct Answers)</h2>
+    <div class="grid answer-grid" id="answerGrid"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Quiz Section (Multiple Choice)</h2>
+
+    <div class="quiz-question" id="q1">
+      <p><b>1)</b> Which homologous series does the compound C₆H₁₄ belong to? Explain.</p>
+      <div class="choices">
+        <label><input type="radio" name="q1" value="a"> A. Alkanes — it matches CₙH₂ₙ₊₂ (n = 6 gives C₆H₁₄)</label>
+        <label><input type="radio" name="q1" value="b"> B. Alkenes — it matches CₙH₂ₙ</label>
+        <label><input type="radio" name="q1" value="c"> C. Alcohols — because it contains -OH</label>
+      </div>
+    </div>
+
+    <div class="quiz-question" id="q2">
+      <p><b>2)</b> Which homologous series does C₅H₁₀O₂ likely belong to? Name it and identify the structural formula.</p>
+      <div class="choices">
+        <label><input type="radio" name="q2" value="a"> A. Ester, methyl butanoate, CH₃CH₂CH₂COOCH₃</label>
+        <label><input type="radio" name="q2" value="b"> B. Carboxylic acid, pentanoic acid, CH₃CH₂CH₂CH₂COOH</label>
+        <label><input type="radio" name="q2" value="c"> C. Aldehyde, pentanal, CH₃CH₂CH₂CH₂CHO</label>
+      </div>
+    </div>
+
+    <div class="quiz-question" id="q3">
+      <p><b>3)</b> Based on naming, structural formula and molecular formula patterns, which statements are correct?</p>
+      <div class="choices">
+        <label><input type="radio" name="q3" value="a"> A. I and II only</label>
+        <label><input type="radio" name="q3" value="b"> B. I, II and III</label>
+        <label><input type="radio" name="q3" value="c"> C. II and III only</label>
+      </div>
+      <ul>
+        <li>I. meth, eth, prop, but, pent, hex, hep, oct, non, dec describe carbon chain length.</li>
+        <li>II. Compounds in the same homologous series share the same functional group.</li>
+        <li>III. Members of a homologous series share a general formula and differ by -CH₂.</li>
+      </ul>
+    </div>
+
+    <button id="checkQuiz">Check Quiz</button>
+    <div class="feedback" id="quizFeedback"></div>
+  </div>
+
+  <script>
+    const compounds = [
+      { id: 1, name: 'Methane (CH4)', structural: 'CH4' },
+      { id: 2, name: 'Ethane (C2H6)', structural: 'CH3-CH3' },
+      { id: 3, name: 'Propane (C3H8)', structural: 'CH3-CH2-CH3' },
+      { id: 4, name: 'Butane (C4H10)', structural: 'CH3-CH2-CH2-CH3' },
+      { id: 5, name: 'Pentane (C5H12)', structural: 'CH3-(CH2)3-CH3' },
+      { id: 6, name: 'Hexane (C6H14)', structural: 'CH3-(CH2)4-CH3' },
+      { id: 7, name: 'Ethene (C2H4)', structural: 'CH2=CH2' },
+      { id: 8, name: 'Propene (C3H6)', structural: 'CH2=CH-CH3' },
+      { id: 9, name: 'Ethanol (C2H6O)', structural: 'CH3-CH2-OH' },
+      { id: 10, name: 'Propan-1-ol (C3H8O)', structural: 'CH3-CH2-CH2-OH' },
+      { id: 11, name: 'Methanoic acid (CH2O2)', structural: 'H-COOH' },
+      { id: 12, name: 'Ethanoic acid (C2H4O2)', structural: 'CH3-COOH' },
+      { id: 13, name: 'Propanoic acid (C3H6O2)', structural: 'CH3-CH2-COOH' },
+      { id: 14, name: 'Butanoic acid (C4H8O2)', structural: 'CH3-CH2-CH2-COOH' },
+      { id: 15, name: 'Pentanoic acid (C5H10O2)', structural: 'CH3-CH2-CH2-CH2-COOH' },
+      { id: 16, name: 'Ethanal (C2H4O)', structural: 'CH3-CHO' }
+    ];
+
+    const dropGrid = document.getElementById('dropGrid');
+    const answerGrid = document.getElementById('answerGrid');
+    const cardBank = document.getElementById('cardBank');
+    const scoreEl = document.getElementById('score');
+    const feedbackEl = document.getElementById('feedback');
+    let score = 0;
+    const boxPotential = {};
+
+    compounds.forEach(c => {
+      boxPotential[c.id] = 5;
+
+      const box = document.createElement('div');
+      box.className = 'drop-box';
+      box.dataset.id = String(c.id);
+      box.innerHTML = `<div class="box-title">${c.name}</div><div class="drop-target">Drop formula here</div><div class="hint">Potential points: <span id="pot-${c.id}">5</span></div>`;
+      dropGrid.appendChild(box);
+
+      box.addEventListener('dragover', e => {
+        if (box.classList.contains('correct')) return;
+        e.preventDefault();
+        box.classList.add('over');
+      });
+      box.addEventListener('dragleave', () => box.classList.remove('over'));
+      box.addEventListener('drop', e => {
+        e.preventDefault();
+        box.classList.remove('over');
+        if (box.classList.contains('correct')) return;
+
+        const cardId = Number(e.dataTransfer.getData('text/plain'));
+        const chosen = compounds.find(x => x.id === cardId);
+
+        if (cardId === c.id) {
+          box.classList.add('correct');
+          box.querySelector('.drop-target').textContent = chosen.structural;
+          score += boxPotential[c.id];
+          scoreEl.textContent = String(score);
+          feedbackEl.textContent = `Correct! +${boxPotential[c.id]} points for ${c.name}.`;
+          const card = document.querySelector(`.card[data-id="${cardId}"]`);
+          card.classList.add('used');
+          card.draggable = false;
+        } else {
+          boxPotential[c.id] = Math.max(0, boxPotential[c.id] - 1);
+          document.getElementById(`pot-${c.id}`).textContent = String(boxPotential[c.id]);
+          feedbackEl.textContent = `Not correct for ${c.name}. Try again. Potential points for this box: ${boxPotential[c.id]}.`;
+        }
+      });
+
+      const answerBox = document.createElement('div');
+      answerBox.className = 'drop-box';
+      answerBox.innerHTML = `<div class="box-title">${c.name}</div><div>${c.structural}</div>`;
+      answerGrid.appendChild(answerBox);
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.textContent = c.structural;
+      card.draggable = true;
+      card.dataset.id = String(c.id);
+      card.addEventListener('dragstart', e => {
+        if (card.classList.contains('used')) {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.setData('text/plain', String(c.id));
+      });
+      cardBank.appendChild(card);
+    });
+
+    document.getElementById('checkQuiz').addEventListener('click', () => {
+      const a1 = document.querySelector('input[name="q1"]:checked')?.value;
+      const a2 = document.querySelector('input[name="q2"]:checked')?.value;
+      const a3 = document.querySelector('input[name="q3"]:checked')?.value;
+      let quizScore = 0;
+      if (a1 === 'a') quizScore++;
+      if (a2 === 'b') quizScore++;
+      if (a3 === 'b') quizScore++;
+
+      const details = [
+        `Q1: ${a1 === 'a' ? 'Correct' : 'Incorrect (C6H14 is an alkane: CnH2n+2)'}`,
+        `Q2: ${a2 === 'b' ? 'Correct' : 'Incorrect (Expected: carboxylic acid, pentanoic acid, CH3CH2CH2CH2COOH)'}`,
+        `Q3: ${a3 === 'b' ? 'Correct' : 'Incorrect (I, II and III are correct)'}`
+      ];
+      document.getElementById('quizFeedback').textContent = `Quiz score: ${quizScore}/3. ${details.join(' | ')}`;
+    });
+  </script>
+</body>
+</html>
